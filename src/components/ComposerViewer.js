@@ -3,9 +3,22 @@ import { Kekule } from 'kekule'
 import 'kekule/theme'
 import { KekuleReact, Components } from '../kekule/kekule.react'
 import '../kekule/ComposerViewer.css'
-import Button from '@mui/material/Button'
 
 let Composer = Components.Composer
+const calcPropsURL =
+  'https://pipelinepilot.kinnate.com:9923/protocols/anon/Web Services/Kinnate/STANDALONE_CALCULATED_PROPERTIES_TABLE?$streamdata=*&$format=text&smiles='
+
+const fetchCalcProps = async (smilesString) => {
+  const url = `${calcPropsURL}${smilesString}&$timeout=1000000`
+  console.log(url)
+  try {
+    const response = await fetch(url)
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error(error)
+  }
+}
 
 class ComposerAndViewer extends React.Component {
   constructor(props) {
@@ -24,6 +37,7 @@ class ComposerAndViewer extends React.Component {
     this.onComposerSelectionChange = this.onComposerSelectionChange.bind(this)
     this.onComposerSMILESClick = this.onComposerSMILESClick.bind(this)
   }
+
   render() {
     let selectionInfoElem
     if (this.state.selectedObjs && this.state.selectedObjs.length) {
@@ -56,9 +70,6 @@ class ComposerAndViewer extends React.Component {
             onSelectionChange={this.onComposerSelectionChange}
           ></Composer>
         </div>
-        <Button variant='contained' onClick={this.onComposerSMILESClick}>
-          Test
-        </Button>
       </div>
     )
   }
@@ -77,8 +88,8 @@ class ComposerAndViewer extends React.Component {
   }
 
   onComposerUserModificationDone(e) {
-    this.setState({ chemObj: this.composer.current.getWidget().getChemObj() })
-    console.log(this.composer.current.getWidget())
+    let composerWidget = this.composer.current.getWidget()
+    this.setState({ chemObj: composerWidget.getChemObj() })
   }
   onComposerSelectionChange(e) {
     this.setState({
@@ -89,8 +100,16 @@ class ComposerAndViewer extends React.Component {
     let composerWidget = this.composer.current.getWidget()
     let mol = composerWidget.exportObjs(Kekule.Molecule)
     // console.log(mol)
-    const smileString = Kekule.IO.saveFormatData(mol[0], 'smi')
-    console.log(smileString)
+    let smilesString
+    if (this.props.smilesString) {
+      smilesString = this.props.smilesString
+      console.log(smilesString)
+    } else {
+      smilesString = Kekule.IO.saveFormatData(mol[0], 'smi')
+      console.log(smilesString)
+    }
+    const data = fetchCalcProps(smilesString)
+    console.log(data)
   }
 }
 
