@@ -5,20 +5,12 @@ import { KekuleReact, Components } from '../kekule/kekule.react'
 import '../kekule/ComposerViewer.css'
 
 let Composer = Components.Composer
-const calcPropsURL =
-  'https://pipelinepilot.kinnate.com:9923/protocols/anon/Web Services/Kinnate/STANDALONE_CALCULATED_PROPERTIES_TABLE?$streamdata=*&$format=text&smiles='
 
-const fetchCalcProps = async (smilesString) => {
-  const url = `${calcPropsURL}${smilesString}&$timeout=1000000`
-  console.log(url)
-  try {
-    const response = await fetch(url)
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error(error)
-  }
-}
+// const regexpReplace = (string) => {
+//   let newString = string.replace(/Properties.*?(?=<)/, '')
+//   newString = newString.replace(/ResultFiles.*$/, '').trim()
+//   return newString
+// }
 
 class ComposerAndViewer extends React.Component {
   constructor(props) {
@@ -28,6 +20,7 @@ class ComposerAndViewer extends React.Component {
       viewerPredefinedSetting: 'basic',
       chemObj: null,
       selectedObjs: undefined,
+      data: {},
     }
     this.composer = React.createRef()
 
@@ -96,10 +89,10 @@ class ComposerAndViewer extends React.Component {
       selectedObjs: this.composer.current.getWidget().getSelection(),
     })
   }
+
   onComposerSMILESClick(e) {
     let composerWidget = this.composer.current.getWidget()
     let mol = composerWidget.exportObjs(Kekule.Molecule)
-    // console.log(mol)
     let smilesString
     if (this.props.smilesString) {
       smilesString = this.props.smilesString
@@ -108,8 +101,7 @@ class ComposerAndViewer extends React.Component {
       smilesString = Kekule.IO.saveFormatData(mol[0], 'smi')
       console.log(smilesString)
     }
-    const data = fetchCalcProps(smilesString)
-    console.log(data)
+    this.props.fetchCalcProps(smilesString)
   }
 }
 
