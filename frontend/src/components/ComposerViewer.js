@@ -46,7 +46,10 @@ class ComposerAndViewer extends React.Component {
       )
     } else
       selectionInfoElem = (
-        <span>Please edit and select objects in the composer.</span>
+        <span>
+          Please use the composer to load a chemical structure or draw one
+          manually, another option is to input the SMILES string below
+        </span>
       )
 
     return (
@@ -83,6 +86,10 @@ class ComposerAndViewer extends React.Component {
   onComposerUserModificationDone(e) {
     let composerWidget = this.composer.current.getWidget()
     this.setState({ chemObj: composerWidget.getChemObj() })
+    let mol = composerWidget.exportObjs(Kekule.Molecule)
+    let smilesString = Kekule.IO.saveFormatData(mol[0], 'smi')
+    this.props.handleUpdateSMILES(smilesString)
+    console.log(smilesString)
   }
   onComposerSelectionChange(e) {
     this.setState({
@@ -91,16 +98,24 @@ class ComposerAndViewer extends React.Component {
   }
 
   onComposerSMILESClick(e) {
-    let composerWidget = this.composer.current.getWidget()
-    let mol = composerWidget.exportObjs(Kekule.Molecule)
+    let mol
     let smilesString
-    if (this.props.smilesString) {
-      smilesString = this.props.smilesString
-      console.log(smilesString)
-    } else {
-      smilesString = Kekule.IO.saveFormatData(mol[0], 'smi')
-      console.log(smilesString)
-    }
+    smilesString = this.props.smilesString
+    Kekule.OpenBabel.enable((error) => {
+      if (!error) {
+        mol = Kekule.IO.loadFormatData(smilesString, 'smi')
+        let generator = new Kekule.Calculator.ObStructure2DGenerator()
+        generator.setSourceMol(mol)
+        generator.executeSync(() => {
+          let newMol = generator.getGeneratedMol()
+          console.log(newMol)
+          this.setState({ chemObj: newMol })
+        })
+      } else {
+        console.error(error)
+      }
+    })
+    console.log(smilesString)
     this.props.fetchCalcProps(smilesString)
   }
 }
