@@ -1,13 +1,10 @@
 const express = require('express')
 const request = require('request')
-const bodyParser = require('body-parser')
 const cors = require('cors')
 
 // CORS Proxy server
 
 const app = express()
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -15,12 +12,22 @@ const corsOptions = {
   },
 }
 const rootUrl =
-  'https://pipelinepilot.kinnate.com:9923/protocols/anon/Web%20Services/Kinnate/STANDALONE_CALCULATED_PROPERTIES_TABLE?$streamdata=*&$format=text&smiles='
+  'https://pipelinepilot.kinnate.com:9923/protocols/anon/Web%20Services/Kinnate/'
 
 // one endpoint
 app.get('/', cors(corsOptions), (req, res) => {
   let smilesString = req.query.smiles
-  const url = `${rootUrl}${smilesString}&$timeout=1000000`
+  let endpoint = req.query.endpoint
+  if (!req.query.smiles || !req.query.endpoint) {
+    return res.status(400).send({ error: 'Missing required query parameters' })
+  }
+  const url = [
+    rootUrl,
+    endpoint,
+    '?$streamdata=*&$format=text&smiles=',
+    smilesString,
+    '&$timeout=1000000999',
+  ].join('')
   console.log(url)
   try {
     req.pipe(request({ rejectUnauthorized: false, url: url })).pipe(res)
