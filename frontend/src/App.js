@@ -5,6 +5,7 @@ import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Grid from '@mui/material/Grid'
 import SMILESForm from './components/SMILESForm'
+import DropDown from './components/Dropdown'
 import Button from '@mui/material/Button'
 import axios from 'axios'
 import XMLParser from 'react-xml-parser'
@@ -18,7 +19,11 @@ import ReactLoading from 'react-loading'
 import Modal from '@mui/material/Modal'
 
 const calcPropsURL = 'http://localhost:5500'
-const blueColour = '#3336FF'
+const blueColour = '#282c34'
+const options = {
+  'Standalone Calc Props': 'STANDALONE_CALCULATED_PROPERTIES_TABLE',
+  'Standalone QSAR': 'STANDALONE_QSAR',
+}
 
 const themeColour = createTheme({
   palette: {
@@ -62,7 +67,7 @@ const Header = styled('header')(({ theme }) => ({
   padding: theme.spacing(4),
   display: 'flex',
   marginBottom: theme.spacing(1),
-  backgroundColor: '#282c34',
+  backgroundColor: blueColour,
   justifyContent: 'center',
   fontSize: '4em',
   lineHeight: 2,
@@ -78,8 +83,12 @@ class App extends React.Component {
       data: [],
       loading: false,
       showTable: false,
+      open: false,
+      selectedIndex: 0,
+      endpoint: options['Standalone Calc Props'],
     }
     this.composer = React.createRef()
+    this.anchorRef = React.createRef(null)
     this.handleChangeSmiles = this.handleChangeSmiles.bind(this)
     this.handleClearSMILES = this.handleClearSMILES.bind(this)
     this.onComposerSMILESClick = this.onComposerSMILESClick.bind(this)
@@ -94,9 +103,12 @@ class App extends React.Component {
   handleClearSMILES = () => {
     this.setState({ smilesString: '' })
   }
-
+  handleUpdateSMILES = (smiles) => {
+    console.log(`calling from Update SMILES: ${smiles}`)
+    this.setState({ smilesString: smiles })
+  }
   fetchCalcProps = async (smilesString) => {
-    const url = `${calcPropsURL}?smiles=${smilesString}`
+    const url = `${calcPropsURL}?smiles=${smilesString}&endpoint=${this.state.endpoint}`
     this.setState({ loading: true })
     try {
       const response = await axios.get(url, {
@@ -109,6 +121,29 @@ class App extends React.Component {
     } catch (error) {
       console.error(error)
     }
+  }
+
+  handleDropDownClick = (event, index) => {
+    console.info(`You clicked ${Object.keys(options)[index]}`)
+    this.setState({
+      open: false,
+      selectedIndex: index,
+      endpoint: options[Object.keys(options)[index]],
+    })
+  }
+
+  handleDropDownToggle = () => {
+    this.setState({ open: !this.state.open })
+  }
+
+  handleDropDownClose = (event) => {
+    if (
+      this.anchorRef.current &&
+      this.anchorRef.current.contains(event.target)
+    ) {
+      return
+    }
+    this.setState({ open: false })
   }
 
   render() {
@@ -129,6 +164,7 @@ class App extends React.Component {
                   ref={this.composer}
                   smilesString={this.state.smilesString}
                   fetchCalcProps={this.fetchCalcProps}
+                  handleUpdateSMILES={this.handleUpdateSMILES}
                 ></ComposerAndViewer>
               </Grid>
             </Grid>
@@ -159,7 +195,7 @@ class App extends React.Component {
                   </Button>
                 </ThemeProvider>
               </Grid>
-              <Grid item xs={10}>
+              <Grid item xs={4}>
                 <ThemeProvider theme={themeColour}>
                   <Button
                     color='blue'
@@ -170,6 +206,24 @@ class App extends React.Component {
                     Clear
                   </Button>
                 </ThemeProvider>
+              </Grid>
+              <Grid item xs={6}>
+                <Box
+                  display='flex'
+                  justifyContent='flex-end'
+                  alignItems='flex-end'
+                >
+                  <DropDown
+                    handleDropDownClick={this.handleDropDownClick}
+                    handleDropDownClose={this.handleDropDownClose}
+                    handleDropDownToggle={this.handleDropDownToggle}
+                    open={this.state.open}
+                    options={options}
+                    anchorRef={this.anchorRef}
+                    selectedIndex={this.state.selectedIndex}
+                    themeColour={themeColour}
+                  />
+                </Box>
               </Grid>
             </Grid>
           </StyledPaper>
@@ -203,19 +257,10 @@ class App extends React.Component {
                       <TableContainer component={Paper}>
                         <Table aria-label='Property table'>
                           <TableHead>
-                            <TableRow key={'header_row0'}>
-                              <StyledTableCell key={'header_smiles'}>
-                                SMILES
-                              </StyledTableCell>
-                              <StyledTableCell key={'header_prop_name'}>
-                                PROPERTY NAME
-                              </StyledTableCell>
-                              <StyledTableCell key={'header_numb_val'}>
-                                NUMERIC VALUE
-                              </StyledTableCell>
-                              <StyledTableCell key={'header_prop_src'}>
-                                PROPERTY SOURCE
-                              </StyledTableCell>
+                            <TableRow>
+                              <StyledTableCell>PROPERTY NAME</StyledTableCell>
+                              <StyledTableCell>NUMERIC VALUE</StyledTableCell>
+                              <StyledTableCell>PROPERTY SOURCE</StyledTableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
@@ -223,9 +268,6 @@ class App extends React.Component {
                               return (
                                 <>
                                   <TableRow hover key={`row_${i}`}>
-                                    <TableCell key={`cell_compound_id_${i}`}>
-                                      {r.attributes.COMPOUND_ID}
-                                    </TableCell>
                                     <TableCell key={`cell_prop_name_${i}`}>
                                       {r.attributes.PROPERTY_NAME}
                                     </TableCell>
