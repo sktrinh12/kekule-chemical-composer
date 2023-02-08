@@ -34,16 +34,17 @@ const themeColour = createTheme({
   },
 })
 
-const modalStyle = {
-  position: 'absolute',
+const StyledModal = styled(Modal)({
+  backgroundColor: 'transparent',
   top: '50%',
   left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 400,
-  bgcolor: 'background.paper',
-  boxShadow: 24,
+  width: '500px',
+  height: 'auto',
+  marginLeft: '-250px',
+  marginTop: '-150px',
   p: 4,
-}
+})
+
 const StyledPaper = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
   ...theme.typography.body2,
@@ -86,6 +87,7 @@ class App extends React.Component {
       open: false,
       selectedIndex: 0,
       endpoint: options['Standalone Calc Props'],
+      insertSmiles: false,
     }
     this.composer = React.createRef()
     this.anchorRef = React.createRef(null)
@@ -94,21 +96,22 @@ class App extends React.Component {
     this.onComposerSMILESClick = this.onComposerSMILESClick.bind(this)
   }
   handleChangeSmiles = (event) => {
-    this.setState({ smilesString: event.target.value })
+    this.setState({ smilesString: event.target.value, insertSmiles: true })
   }
 
   onComposerSMILESClick = () => {
     this.composer.current.onComposerSMILESClick()
   }
   handleClearSMILES = () => {
-    this.setState({ smilesString: '' })
+    this.setState({ smilesString: '', chemObj: null })
   }
   handleUpdateSMILES = (smiles) => {
-    console.log(`calling from Update SMILES: ${smiles}`)
+    // console.log(`calling from Update SMILES: ${smiles}`)
     this.setState({ smilesString: smiles })
   }
   fetchCalcProps = async (smilesString) => {
     const url = `${calcPropsURL}?smiles=${smilesString}&endpoint=${this.state.endpoint}`
+    console.log(url)
     this.setState({ loading: true })
     try {
       const response = await axios.get(url, {
@@ -165,6 +168,7 @@ class App extends React.Component {
                   smilesString={this.state.smilesString}
                   fetchCalcProps={this.fetchCalcProps}
                   handleUpdateSMILES={this.handleUpdateSMILES}
+                  insertSmiles={this.state.insertSmiles}
                 ></ComposerAndViewer>
               </Grid>
             </Grid>
@@ -228,20 +232,16 @@ class App extends React.Component {
             </Grid>
           </StyledPaper>
           {this.state.loading ? (
-            <Modal
-              open={true}
-              aria-labelledby='modal-modal-title'
-              aria-describedby='modal-modal-description'
-            >
-              <Box sx={modalStyle}>
+            <StyledModal open={true}>
+              <>
                 <ReactLoading
                   type='spin'
                   color={blueColour}
                   height={'auto'}
                   width={'100%'}
                 />
-              </Box>
-            </Modal>
+              </>
+            </StyledModal>
           ) : (
             this.state.showTable && (
               <>
@@ -264,23 +264,19 @@ class App extends React.Component {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {this.state.data.map((r, i) => {
-                              return (
-                                <>
-                                  <TableRow hover key={`row_${i}`}>
-                                    <TableCell key={`cell_prop_name_${i}`}>
-                                      {r.attributes.PROPERTY_NAME}
-                                    </TableCell>
-                                    <TableCell key={`cell_num_val_${i}`}>
-                                      {r.attributes.NUMERIC_VALUE}
-                                    </TableCell>
-                                    <TableCell key={`cell_prop_src_${i}`}>
-                                      {r.attributes.PROPERTY_SOURCE}
-                                    </TableCell>
-                                  </TableRow>
-                                </>
-                              )
-                            })}
+                            {this.state.data.map((r, i) => (
+                              <TableRow hover key={`row_${i}`}>
+                                <TableCell key={`cell_prop_name_${i}`}>
+                                  {r.attributes.PROPERTY_NAME}
+                                </TableCell>
+                                <TableCell key={`cell_num_val_${i}`}>
+                                  {r.attributes.NUMERIC_VALUE}
+                                </TableCell>
+                                <TableCell key={`cell_prop_src_${i}`}>
+                                  {r.attributes.PROPERTY_SOURCE}
+                                </TableCell>
+                              </TableRow>
+                            ))}
                           </TableBody>
                         </Table>
                       </TableContainer>
