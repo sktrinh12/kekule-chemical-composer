@@ -3,14 +3,16 @@ import { Kekule } from 'kekule'
 import 'kekule/theme'
 import { KekuleReact, Components } from '../kekule/kekule.react'
 import '../kekule/ComposerViewer.css'
+const { Molecule } = require('openchemlib')
 
 let Composer = Components.Composer
-
-// const regexpReplace = (string) => {
-//   let newString = string.replace(/Properties.*?(?=<)/, '')
-//   newString = newString.replace(/ResultFiles.*$/, '').trim()
-//   return newString
-// }
+Kekule.environment.setEnvVar(
+  'openbabel.path',
+  `${process.env.PUBLIC_URL}/kekule/`
+) // need only to call this once
+// Kekule.OpenBabel.enable((e) => {
+//   console.log(e)
+// })
 
 class ComposerAndViewer extends React.Component {
   constructor(props) {
@@ -87,9 +89,11 @@ class ComposerAndViewer extends React.Component {
     let composerWidget = this.composer.current.getWidget()
     this.setState({ chemObj: composerWidget.getChemObj() })
     let mol = composerWidget.exportObjs(Kekule.Molecule)
-    let smilesString = Kekule.IO.saveFormatData(mol[0], 'smi')
-    this.props.handleUpdateSMILES(smilesString)
-    console.log(smilesString)
+    if (mol.length) {
+      let smilesString = Kekule.IO.saveFormatData(mol[0], 'smi')
+      this.props.handleUpdateSMILES(smilesString)
+      console.log(smilesString)
+    }
   }
   onComposerSelectionChange(e) {
     this.setState({
@@ -101,20 +105,23 @@ class ComposerAndViewer extends React.Component {
     let mol
     let smilesString
     smilesString = this.props.smilesString
-    Kekule.OpenBabel.enable((error) => {
-      if (!error) {
-        mol = Kekule.IO.loadFormatData(smilesString, 'smi')
-        let generator = new Kekule.Calculator.ObStructure2DGenerator()
-        generator.setSourceMol(mol)
-        generator.executeSync(() => {
+    const molfile = Molecule.fromSmiles(smilesString).toMolfile()
+    mol = Kekule.IO.loadFormatData(molfile, 'mol')
+    // console.log(this.props.insertSmiles)
+    if (this.props.insertSmiles) {
+      let generator = new Kekule.Calculator.ObStructure2DGenerator()
+      generator.setSourceMol(mol)
+      console.log('test')
+      generator.execute((err) => {
+        if (!err) {
           let newMol = generator.getGeneratedMol()
-          console.log(newMol)
-          this.setState({ chemObj: newMol })
-        })
-      } else {
-        console.error(error)
-      }
-    })
+          this.composer.current.getWidget().setChemObj(newMol)
+          // this.setState({ chemObj: newMol })
+        } else {
+          console.error(err)
+        }
+      })
+    }
     console.log(smilesString)
     this.props.fetchCalcProps(smilesString)
   }
