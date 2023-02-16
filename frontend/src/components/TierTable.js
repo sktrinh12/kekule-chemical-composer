@@ -1,12 +1,39 @@
 import Table from '@mui/material/Table'
 import { Component } from 'react'
 import TableBody from '@mui/material/TableBody'
-import TableCell, { tableCellClasses } from '@mui/material/TableCell'
+import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Paper from '@mui/material/Paper'
 import { styled } from '@mui/material/styles'
+import Tooltip, { tooltipClasses } from '@mui/material/Tooltip'
+import { colour } from '../Colour.js'
+
+const CustomWidthTooltip = styled(({ className, ...props }) => (
+  <Tooltip {...props} classes={{ popper: className }} />
+))({
+  [`& .${tooltipClasses.tooltip}`]: {
+    maxWidth: 500,
+    fontSize: 16,
+    whiteSpace: 'pre-wrap',
+  },
+})
+
+const SplitSemiColonString = (text) => {
+  return text.replace(/;/g, '\n').replace(/_/g, ' ')
+}
+
+const columnWidths = {
+  Kinnate_Alias: '120px',
+  Tier: '80px',
+  QSAR_Model: '100px',
+  MODEL_ASSESS: '90px',
+  MODEL: '200px',
+  ClosestNames: '200px',
+  Tanimoto: '80px',
+  BestSimilarity: ' 100px',
+}
 
 const propNames = {
   // 'REGNO',
@@ -28,19 +55,6 @@ const propNames = {
   // 'PEYN_COMMENT',
 }
 
-const colour = '#282c34'
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: colour,
-    color: theme.palette.common.white,
-    alignItems: 'center',
-  },
-  [`&.${tableCellClasses.body}`]: {
-    fontSize: 12,
-  },
-}))
-
 class TierTable extends Component {
   render() {
     return (
@@ -49,7 +63,17 @@ class TierTable extends Component {
           <TableHead>
             <TableRow>
               {Object.values(propNames).map((n, i) => (
-                <StyledTableCell key={`head_${i}`}>{n}</StyledTableCell>
+                <TableCell
+                  key={`head_${i}`}
+                  sx={{
+                    lineHeight: '14px',
+                    backgroundColor: colour,
+                    color: 'white',
+                    maxWidth: columnWidths[n],
+                  }}
+                >
+                  {n}
+                </TableCell>
               ))}
             </TableRow>
           </TableHead>
@@ -64,13 +88,46 @@ class TierTable extends Component {
                       border: 0,
                     },
                   }}
-                  style={{ height: '20px' }}
                 >
                   {Object.keys(propNames).map((propName, j) =>
                     Object.keys(r).length === 0 ? (
-                      <TableCell key={`blank_${i}_${j}`}></TableCell>
+                      <TableCell
+                        sx={{
+                          height: '14px',
+                          maxWidth: 'auto',
+                        }}
+                        key={`blank_${i}_${j}`}
+                      ></TableCell>
+                    ) : ['ClosestNames', 'MODEL', 'Kinnate_Alias'].includes(
+                        propName
+                      ) ? (
+                      <CustomWidthTooltip
+                        key={`tooltip_${i}_${j}`}
+                        title={SplitSemiColonString(r.attributes[propName])}
+                      >
+                        <TableCell
+                          sx={{
+                            fontSize: '11px',
+                            height: '14px',
+                            maxWidth: columnWidths[propName],
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          key={`${r.attributes[propName]}_${i}_${j}`}
+                        >
+                          {r.attributes[propName]}
+                        </TableCell>
+                      </CustomWidthTooltip>
                     ) : (
-                      <TableCell key={`${r.attributes[propName]}_${i}_${j}`}>
+                      <TableCell
+                        sx={{
+                          fontSize: '11px',
+                          height: '14px',
+                          maxWidth: columnWidths[propName],
+                        }}
+                        key={`${r.attributes[propName]}_${i}_${j}`}
+                      >
                         {r.attributes[propName]}
                       </TableCell>
                     )
