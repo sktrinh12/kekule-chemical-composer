@@ -1,19 +1,20 @@
 import React from 'react'
 import ComposerAndViewer from './components/ComposerViewer'
 import { createTheme, styled, ThemeProvider } from '@mui/material/styles'
-import Box from '@mui/material/Box'
+// import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Grid from '@mui/material/Grid'
 import SMILESForm from './components/SMILESForm'
-import DropDown from './components/Dropdown'
+// import DropDown from './components/Dropdown'
 import Button from '@mui/material/Button'
 import axios from 'axios'
 import XMLParser from 'react-xml-parser'
 import ReactLoading from 'react-loading'
 import Modal from '@mui/material/Modal'
-// import { xmlDataSTAND } from './mockdataCALCPROPS.js'
-import CalcTable from './CalcTable'
-import { colour } from './Colour'
+import QSARTable from './components/QSARTable.js'
+import { colour } from './Colour.js'
+import { xmlDataSTAND } from './mockdataCALCPROPS.js'
+import { xmlDataQSAR } from './mockdataQSAR.js'
 
 const calcPropsURL = 'http://localhost:5500'
 const options = {
@@ -42,10 +43,10 @@ const StyledModal = styled(Modal)({
 })
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
+  backgroundColor: '#fff',
   ...theme.typography.body2,
-  padding: theme.spacing(3),
-  maxWidth: 1000,
+  padding: theme.spacing(2),
+  maxWidth: 1600,
   color: theme.palette.text.primary,
 }))
 
@@ -67,38 +68,45 @@ class App extends React.Component {
     super(props)
     this.state = {
       smilesString: '',
-      data: [],
+      tierData: [],
+      calcData: [],
       loading: false,
       showTable: false,
       open: false,
       selectedIndex: 0,
-      endpoint: '',
+      // endpoint: '',
       insertSmiles: false,
+      error: null,
     }
+
+    this.source = axios.CancelToken.source()
     this.composer = React.createRef()
     this.anchorRef = React.createRef(null)
     this.handleChangeSmiles = this.handleChangeSmiles.bind(this)
     this.handleClearSMILES = this.handleClearSMILES.bind(this)
     this.onComposerSMILESClick = this.onComposerSMILESClick.bind(this)
   }
-
+  componentWillUnmount = () => {
+    console.log('Component unmounted')
+    this.source.cancel('Request canceled by cleanup')
+  }
   componentDidMount() {
     const urlParams = new URLSearchParams(window.location.search)
     this.setState({
       smilesString: urlParams.get('smiles') ?? '',
-      endpoint: urlParams.get('endpoint') ?? options['Standalone Calc Props'],
+      // endpoint: urlParams.get('endpoint') ?? options['Standalone Calc Props'],
     })
   }
-
   componentDidUpdate(prevProps, prevState) {
     if (
       this.state.smilesString &&
-      this.state.smilesString !== prevState.smilesString &&
-      this.state.endpoint &&
-      this.state.endpoint !== prevState.endpoint
+      this.state.smilesString !== prevState.smilesString //&&
+      // this.state.endpoint &&
+      // this.state.endpoint !== prevState.endpoint
     ) {
       console.log(this.state.smilesString)
       this.fetchCalcProps()
+      this.onComposerSMILESClick()
     }
   }
 
@@ -118,51 +126,81 @@ class App extends React.Component {
     this.setState({ smilesString: smiles })
   }
   fetchCalcProps = async () => {
-    const url = `${calcPropsURL}?smiles=${this.state.smilesString}&endpoint=${this.state.endpoint}`
-    console.log(url)
     this.setState({ loading: true })
     try {
-      const response = await axios.get(url, {
-        method: 'GET',
+      // TIER
+      const urlTier = `${calcPropsURL}?smiles=${encodeURIComponent(
+        this.state.smilesString
+      )}&endpoint=${options['Standalone QSAR']}`
+      console.log(urlTier)
+      // const tierResponse = await axios.get(urlTier, {
+      //   method: 'GET',
+      //   cancelToken: this.source.token,
+      // })
+      let tData = xmlDataQSAR
+      // let tData = await tierResponse.data
+      tData = new XMLParser().parseFromString(tData)
+
+      // CALC PROPS
+      const urlCalc = `${calcPropsURL}?smiles=${encodeURIComponent(
+        this.state.smilesString
+      )}&endpoint=${options['Standalone Calc Props']}`
+      console.log(urlCalc)
+      // const calcResponse = await axios.get(urlCalc, {
+      //   method: 'GET',
+      //   cancelToken: this.source.token,
+      // })
+      // let cData = await calcResponse.data
+      // cData = new XMLParser().parseFromString(cData)
+
+      let cData = xmlDataSTAND
+      cData = new XMLParser().parseFromString(cData)
+      // console.log(tData.children)
+      // console.log(cData.children)
+      this.setState({
+        tierData: tData.children,
+        calcData: cData.children,
+        loading: false,
+        showTable: true,
       })
-      let data = await response.data
-      // let data = xmlDataSTAND
-      data = new XMLParser().parseFromString(data)
-      console.log(data.children)
-      this.setState({ data: data.children, loading: false, showTable: true })
     } catch (error) {
-      console.error(error)
+      if (!axios.isCancel(error)) {
+        this.setState({ error: error, loading: false })
+        console.error(error)
+      }
     }
   }
 
-  handleDropDownClick = (event, index) => {
-    console.info(`You clicked ${Object.keys(options)[index]}`)
-    this.setState({
-      open: false,
-      selectedIndex: index,
-      endpoint: options[Object.keys(options)[index]],
-    })
-  }
+  // handleDropDownClick = (event, index) => {
+  //   console.info(`You clicked ${Object.keys(options)[index]}`)
+  //   this.setState({
+  //     open: false,
+  //     selectedIndex: index,
+  //     endpoint: options[Object.keys(options)[index]],
+  //   })
+  // }
 
-  handleDropDownToggle = () => {
-    this.setState({ open: !this.state.open })
-  }
+  // handleDropDownToggle = () => {
+  //   this.setState({ open: !this.state.open })
+  // }
 
-  handleDropDownClose = (event) => {
-    if (
-      this.anchorRef.current &&
-      this.anchorRef.current.contains(event.target)
-    ) {
-      return
-    }
-    this.setState({ open: false })
-  }
+  // handleDropDownClose = (event) => {
+  //   if (
+  //     this.anchorRef.current &&
+  //     this.anchorRef.current.contains(event.target)
+  //   ) {
+  //     return
+  //   }
+  //   this.setState({ open: false })
+  // }
 
   render() {
-    return (
-      <>
-        {/*<Header>Kinnate Pipeline Pilot Chemical Property Analyser</Header>*/}
-        <Box sx={{ flexGrow: 1 }}>
+    if (this.state.error) {
+      return <div>Error: {this.state.error.message}</div>
+    } else {
+      return (
+        <>
+          {/*<Header>Kinnate Pipeline Pilot Chemical Property Analyser</Header>*/}
           <StyledPaper
             sx={{
               my: 1,
@@ -170,7 +208,7 @@ class App extends React.Component {
               p: 2,
             }}
           >
-            <Grid container wrap='nowrap' spacing={2}>
+            <Grid container wrap='nowrap' spacing={1} justifyContent='center'>
               <Grid item xs={6}>
                 <ComposerAndViewer
                   ref={this.composer}
@@ -220,24 +258,26 @@ class App extends React.Component {
                   </Button>
                 </ThemeProvider>
               </Grid>
-              <Grid item xs={6}>
-                <Box
+              {/*             <Grid item xs={6}>
+               <Box
                   display='flex'
                   justifyContent='flex-end'
                   alignItems='flex-end'
                 >
                   <DropDown
-                    handleDropDownClick={this.handleDropDownClick}
-                    handleDropDownClose={this.handleDropDownClose}
-                    handleDropDownToggle={this.handleDropDownToggle}
-                    open={this.state.open}
-                    options={options}
-                    anchorRef={this.anchorRef}
-                    selectedIndex={this.state.selectedIndex}
-                    themeColour={themeColour}
+                      handleDropDownClick={this.handleDropDownClick}
+                      handleDropDownClose={this.handleDropDownClose}
+                      handleDropDownToggle={this.handleDropDownToggle}
+                      open={this.state.open}
+                      options={options}
+                      anchorRef={this.anchorRef}
+                      selectedIndex={this.state.selectedIndex}
+                      themeColour={themeColour}
                   />
                 </Box>
-              </Grid>
+
+             </Grid>
+  */}{' '}
             </Grid>
           </StyledPaper>
           {this.state.loading ? (
@@ -256,23 +296,26 @@ class App extends React.Component {
               <>
                 <StyledPaper
                   sx={{
-                    my: 4,
+                    my: 2,
                     mx: 'auto',
                     p: 2,
                   }}
                 >
                   <Grid container>
-                    <Grid item xs={6}>
-                      <CalcTable data={this.state.data} />
+                    <Grid item xs={12}>
+                      <QSARTable
+                        tierData={this.state.tierData}
+                        calcData={this.state.calcData}
+                      />
                     </Grid>
                   </Grid>
                 </StyledPaper>
               </>
             )
           )}
-        </Box>
-      </>
-    )
+        </>
+      )
+    }
   }
 }
 
