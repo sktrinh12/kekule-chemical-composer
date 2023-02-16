@@ -25,7 +25,7 @@ app.get('/', cors(corsOptions), (req, res) => {
     rootUrl,
     endpoint,
     '?$streamdata=*&$format=text&smiles=',
-    smilesString,
+    encodeURIComponent(smilesString),
     '&$timeout=1000000999',
   ].join('')
   console.log(url)
@@ -33,7 +33,7 @@ app.get('/', cors(corsOptions), (req, res) => {
     req.pipe(request({ rejectUnauthorized: false, url: url })).pipe(res)
   } catch (error) {
     console.error(error)
-    res.send(error)
+    return res.status(400).send({ error: error })
   }
 })
 
